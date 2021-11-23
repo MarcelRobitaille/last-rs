@@ -142,6 +142,7 @@ checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 [[package]]
 name = "utmp-raw"
 version = "0.2.0"
+source = "git+https://github.com/MarcelRobitaille/utmp-rs#3dc2d2bae8efbb274fe80b2dc9ba1d47bc19d10f"
 dependencies = [
  "libc",
  "zerocopy",
@@ -150,6 +151,7 @@ dependencies = [
 [[package]]
 name = "utmp-rs"
 version = "0.1.2"
+source = "git+https://github.com/MarcelRobitaille/utmp-rs#3dc2d2bae8efbb274fe80b2dc9ba1d47bc19d10f"
 dependencies = [
  "chrono",
  "libc",

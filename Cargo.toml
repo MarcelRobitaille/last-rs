@@ -7,5 +7,5 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4.19"
-utmp-rs = { path = "../utmp-rs" , version = " 0.1.2" }
+utmp-rs = { git = "https://github.com/MarcelRobitaille/utmp-rs" , version = " 0.1.2" }
 thiserror = "1.0.24"
