@@ -55,7 +55,7 @@ fn find_accompanying_logout(entries: &[UtmpEntry], target_line: &str) -> Option<
     })
 }
 
-pub fn iter_logins() -> Result<Vec<Enter>, LastError> {
+pub fn get_logins() -> Result<Vec<Enter>, LastError> {
     // let entries = utmp_rs::parse_from_path("/var/run/utmp")?;
     let mut entries = utmp_rs::parse_from_path("/var/log/wtmp")?;
     entries.reverse();

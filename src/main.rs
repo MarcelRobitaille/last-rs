@@ -1,7 +1,7 @@
-use last_rs::{iter_logins, Exit, LastError};
+use last_rs::{get_logins, Exit, LastError};
 
 fn print() -> Result<(), LastError> {
-    for entry in iter_logins()? {
+    for entry in get_logins()? {
         // println!("{:?}", entry);
         // let logout_time = match entry.exit {
         //     Logout::Message(message) => message,
