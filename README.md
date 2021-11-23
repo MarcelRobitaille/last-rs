@@ -8,3 +8,7 @@ It is also an example of how to use [utmp-rs](https://github.com/upsuper/utmp-rs
 
 **NOT yet feature compatible with `last.c`.**
 Right now, the output is kind of like `last <username>`, and no options or flags are supported.
+
+## Acknowledgements
+
+Thank you to [utmp-rs](https://github.com/upsuper/utmp-rs) for doing the hard work of parsing `/var/log/wtmp` and making my life easy.
