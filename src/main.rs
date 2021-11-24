@@ -3,11 +3,6 @@ use last_rs::{get_logins, Exit, LastError};
 
 fn print(file: &str) -> Result<(), LastError> {
     for entry in get_logins(file)? {
-        // println!("{:?}", entry);
-        // let logout_time = match entry.exit {
-        //     Logout::Message(message) => message,
-        //     Logout::Time(time) => time.format("%H:%M").to_string(),
-        // };
         let exit_text = match entry.exit {
             Exit::StillLoggedIn => "still logged in".to_string(),
             Exit::Logout(time) | Exit::Crash(time) | Exit::Reboot(time) => {
