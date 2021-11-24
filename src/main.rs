@@ -1,8 +1,24 @@
 use clap::{App, Arg};
-use last_rs::{get_logins, Exit, LastError};
+use last_rs::{get_logins, Enter, Exit, LastError};
+use std::path::Path;
+
+fn print_footer(entries: Vec<Enter>, file: &str) -> Option<()> {
+    let last = entries.last()?;
+    let name = Path::new(file).file_name()?.to_str()?;
+    println!();
+    println!(
+        "{} begins {}",
+        name,
+        last.login_time.format("%a %b %d %H:%M:%S %Y")
+    );
+
+    Some(())
+}
 
 fn print(file: &str) -> Result<(), LastError> {
-    for entry in get_logins(file)? {
+    let entries = get_logins(file)?;
+
+    for entry in entries.iter() {
         let exit_text = match entry.exit {
             Exit::StillLoggedIn => "still logged in".to_string(),
             Exit::Logout(time) | Exit::Crash(time) | Exit::Reboot(time) => {
@@ -42,6 +58,10 @@ fn print(file: &str) -> Result<(), LastError> {
             exit_text,
         );
     }
+
+    // TODO: This is using the last login, which does not fully match up with the first entry.
+    // Looks like that's what last.c is using
+    print_footer(entries, file);
 
     Ok(())
 }
