@@ -1,7 +1,8 @@
+use clap::{App, Arg};
 use last_rs::{get_logins, Exit, LastError};
 
-fn print() -> Result<(), LastError> {
-    for entry in get_logins()? {
+fn print(file: &str) -> Result<(), LastError> {
+    for entry in get_logins(file)? {
         // println!("{:?}", entry);
         // let logout_time = match entry.exit {
         //     Logout::Message(message) => message,
@@ -51,5 +52,27 @@ fn print() -> Result<(), LastError> {
 }
 
 fn main() {
-    print().unwrap_or_else(|err| println!("{}", err));
+    let matches = App::new("last")
+        .arg(
+            Arg::with_name("file")
+                .short("f")
+                .long("file")
+                .help(
+                    "Tell last to use a specific file instead of /var/log/wtmp. \
+                    The --file option can be given multiple times, \
+                    and all of the specified files will be processed.",
+                )
+                .multiple(true)
+                .number_of_values(1)
+                .takes_value(true),
+        )
+        .get_matches();
+
+    let files: Vec<_> = matches
+        .values_of("file")
+        .map_or_else(|| vec!["/var/log/wtmp"], Iterator::collect);
+
+    for file in files {
+        print(file).unwrap_or_else(|err| println!("{}", err));
+    }
 }

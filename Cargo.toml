@@ -9,3 +9,15 @@ edition = "2018"
 chrono = "0.4.19"
 utmp-rs = { git = "https://github.com/MarcelRobitaille/utmp-rs" , version = " 0.1.2" }
 thiserror = "1.0.24"
+clap = "2.33.3"
+
+# [features]
+# binary-dependencies = ["clap"]
+
+# [lib]
+# name = "last_rs"
+
+# [[bin]]
+# name = "last"
+# path = "src/main.rs"
+# required-features = ["binary-dependencies"]
