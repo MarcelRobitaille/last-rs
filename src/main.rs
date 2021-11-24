@@ -1,24 +1,40 @@
 use clap::{App, Arg};
 use last_rs::{get_logins, Enter, Exit, LastError};
+use std::env;
 use std::path::Path;
+use thiserror::Error;
 
-fn print_footer(entries: Vec<Enter>, file: &str) -> Option<()> {
+#[derive(Error, Debug)]
+pub enum CliError {
+    #[error(transparent)]
+    Api(#[from] LastError),
+
+    #[error("Could not parse option `{option}'. Expected `{expected}', found `{found}'.")]
+    Argument {
+        option: String,
+        expected: String,
+        found: String,
+    },
+}
+
+// TODO: This is using the last login, which does not fully match up with the first entry.
+// Looks like that's what last.c is using
+fn prepare_footer(entries: &[Enter], file: &str) -> Option<String> {
     let last = entries.last()?;
     let name = Path::new(file).file_name()?.to_str()?;
-    println!();
-    println!(
+    return Some(format!(
         "{} begins {}",
         name,
         last.login_time.format("%a %b %d %H:%M:%S %Y")
-    );
-
-    Some(())
+    ));
 }
 
-fn print(file: &str) -> Result<(), LastError> {
+fn print(file: &str, number: Option<usize>) -> Result<(), LastError> {
     let entries = get_logins(file)?;
 
-    for entry in entries.iter() {
+    let footer = prepare_footer(&entries, file);
+
+    for entry in entries.iter().take(number.unwrap_or_else(|| entries.len())) {
         let exit_text = match entry.exit {
             Exit::StillLoggedIn => "still logged in".to_string(),
             Exit::Logout(time) | Exit::Crash(time) | Exit::Reboot(time) => {
@@ -59,14 +75,15 @@ fn print(file: &str) -> Result<(), LastError> {
         );
     }
 
-    // TODO: This is using the last login, which does not fully match up with the first entry.
-    // Looks like that's what last.c is using
-    print_footer(entries, file);
+    if let Some(footer) = footer {
+        println!();
+        println!("{}", footer);
+    }
 
     Ok(())
 }
 
-fn main() {
+fn cli() -> Result<(), CliError> {
     let matches = App::new("last")
         .arg(
             Arg::with_name("file")
@@ -81,13 +98,40 @@ fn main() {
                 .number_of_values(1)
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("number")
+                .short("n")
+                .long("limit")
+                .help("Tell last how many lines to show.")
+                .takes_value(true),
+        )
         .get_matches();
 
     let files: Vec<_> = matches
         .values_of("file")
         .map_or_else(|| vec!["/var/log/wtmp"], Iterator::collect);
 
+    let number = match matches.value_of("number") {
+        Some(number) => Some(number.parse().map_err(|_e| {
+            CliError::Argument {
+                option: env::args()
+                    .nth(matches.index_of("number").unwrap() - 1)
+                    .unwrap(),
+                expected: "int".to_string(),
+                found: number.to_string(),
+            }
+        })?),
+        None => None,
+    };
+
     for file in files {
-        print(file).unwrap_or_else(|err| println!("{}", err));
+        print(file, number)?;
     }
+
+    Ok(())
+}
+
+// Small wrapper to handle errors in `cli()`
+fn main() {
+    cli().unwrap_or_else(|err| println!("last: {}", err));
 }
