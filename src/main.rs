@@ -3,11 +3,27 @@ use last_rs::{get_logins, Enter, Exit, LastError};
 use std::env;
 use std::path::Path;
 use thiserror::Error;
+use time::error::Format as TimeFormatError;
+use time::error::IndeterminateOffset as TimeIndeterminateOffsetError;
+use time::macros::format_description;
+use time::UtcOffset;
+
+#[derive(Error, Debug)]
+pub enum PrintError {
+    #[error(transparent)]
+    Api(#[from] LastError),
+
+    #[error(transparent)]
+    TimeFormat(#[from] TimeFormatError),
+
+    #[error(transparent)]
+    TimeIndeterminateOffset(#[from] TimeIndeterminateOffsetError),
+}
 
 #[derive(Error, Debug)]
 pub enum CliError {
     #[error(transparent)]
-    Api(#[from] LastError),
+    Print(#[from] PrintError),
 
     #[error("Could not parse option `{option}'. Expected `{expected}', found `{found}'.")]
     Argument {
@@ -19,44 +35,48 @@ pub enum CliError {
 
 // TODO: This is using the last login, which does not fully match up with the first entry.
 // Looks like that's what last.c is using
-fn prepare_footer(entries: &[Enter], file: &str) -> Option<String> {
+fn prepare_footer(entries: &[Enter], file: &str, local_offset: UtcOffset) -> Option<String> {
     let last = entries.last()?;
     let name = Path::new(file).file_name()?.to_str()?;
-    return Some(format!(
+    Some(format!(
         "{} begins {}",
         name,
-        last.login_time.format("%a %b %d %H:%M:%S %Y")
-    ));
+        last.login_time.to_offset(local_offset).format(format_description!("[weekday repr:short] [month repr:short] [day padding:space] [hour]:[minute]:[second] [year]")).ok()?,
+    ))
 }
 
-fn print(file: &str, number: Option<usize>) -> Result<(), LastError> {
+fn print(file: &str, number: Option<usize>) -> Result<(), PrintError> {
+    let local_offset = UtcOffset::current_local_offset()?;
+
     let entries = get_logins(file)?;
 
-    let footer = prepare_footer(&entries, file);
+    let footer = prepare_footer(&entries, file, local_offset);
 
-    for entry in entries.iter().take(number.unwrap_or_else(|| entries.len())) {
+    for entry in entries.iter().take(number.unwrap_or(entries.len())) {
         let exit_text = match entry.exit {
             Exit::StillLoggedIn => "still logged in".to_string(),
             Exit::Logout(time) | Exit::Crash(time) | Exit::Reboot(time) => {
                 let delta_time = time - entry.login_time;
-                let delta_time = if delta_time.num_days() > 0 {
+                let delta_time = if delta_time.whole_days() > 0 {
                     format!(
                         "({}+{:0>2}:{:0>2})",
-                        delta_time.num_days(),
-                        delta_time.num_hours() % 24,
-                        delta_time.num_minutes() % 60,
+                        delta_time.whole_days(),
+                        delta_time.whole_hours() % 24,
+                        delta_time.whole_minutes() % 60,
                     )
                 } else {
                     format!(
                         " ({:0>2}:{:0>2})",
-                        delta_time.num_hours() % 24,
-                        delta_time.num_minutes() % 60,
+                        delta_time.whole_hours() % 24,
+                        delta_time.whole_minutes() % 60,
                     )
                 };
                 format!(
                     "{:<6}{}",
                     match entry.exit {
-                        Exit::Logout(time) => time.format("%H:%M").to_string(),
+                        Exit::Logout(time) => time
+                            .to_offset(local_offset)
+                            .format(format_description!("[hour]:[minute]"))?,
                         Exit::Crash(_) => "crash".to_string(),
                         Exit::Reboot(_) => "down".to_string(),
                         _ => unreachable!(),
@@ -70,7 +90,12 @@ fn print(file: &str, number: Option<usize>) -> Result<(), LastError> {
             entry.user,
             entry.line,
             entry.host,
-            entry.login_time.format("%a %b %e %H:%M"),
+            entry
+                .login_time
+                .to_offset(local_offset)
+                .format(format_description!(
+                    "[weekday repr:short] [month repr:short] [day padding:space] [hour]:[minute]"
+                ))?,
             exit_text,
         );
     }

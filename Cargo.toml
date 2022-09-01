@@ -6,8 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.19"
-utmp-rs = { git = "https://github.com/MarcelRobitaille/utmp-rs" , version = " 0.1.2" }
+time = { version = "0.3.14", features = ["formatting", "macros", "local-offset"] }
+utmp-rs = "0.3.0"
 thiserror = "1.0.24"
 clap = "2.33.3"
 

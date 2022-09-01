@@ -1,13 +1,13 @@
-use chrono::{DateTime, Local};
 use thiserror::Error;
+use time::OffsetDateTime;
 use utmp_rs::UtmpEntry;
 
 // An exit event (logout, system crash, powered off)
 #[derive(Debug)]
 pub enum Exit {
-    Logout(DateTime<Local>),
-    Crash(DateTime<Local>),
-    Reboot(DateTime<Local>),
+    Logout(OffsetDateTime),
+    Crash(OffsetDateTime),
+    Reboot(OffsetDateTime),
     StillLoggedIn,
 }
 
@@ -17,7 +17,7 @@ pub struct Enter {
     pub user: String,
     pub host: String,
     pub line: String,
-    pub login_time: DateTime<Local>,
+    pub login_time: OffsetDateTime,
     pub exit: Exit,
 }
 
@@ -35,22 +35,10 @@ fn find_accompanying_logout(entries: &[UtmpEntry], target_line: &str) -> Option<
     entries.iter().rev().find_map(|x| match x {
         // If we see a DEAD_PROCESS with the same line as the login, then it's a logout event
         UtmpEntry::DeadProcess { line, time, .. } if line == target_line => {
-            Some(Exit::Logout(DateTime::from(*time)))
+            Some(Exit::Logout(*time))
         }
-        // Kind of hacky, but a RUN_LVL with user "shutdown" is a shutdown event
-        // Source: last.c from util-linux
-        UtmpEntry::RunLevel { user, time, .. } if user == "shutdown" => {
-            Some(Exit::Reboot(DateTime::from(*time)))
-        }
-        // Boot event
-        UtmpEntry::BootTime(time) => Some(Exit::Crash(DateTime::from(*time))),
-        // Not sure what magic is this
-        // Taken from last.c in util-linux
-        UtmpEntry::RunLevel {
-            pid, user, time, ..
-        } if user == "runlevel" && ['0', '6'].contains(&(pid.to_be_bytes()[1] as char)) => {
-            Some(Exit::Reboot(DateTime::from(*time)))
-        }
+        UtmpEntry::ShutdownTime { time, .. } => Some(Exit::Reboot(*time)),
+        UtmpEntry::BootTime { time, .. } => Some(Exit::Crash(*time)),
         _ => None,
     })
 }
@@ -76,7 +64,7 @@ pub fn get_logins(file: &str) -> Result<Vec<Enter>, LastError> {
                     user: user.to_owned(),
                     host: host.to_owned(),
                     line: line.to_owned(),
-                    login_time: DateTime::from(*time),
+                    login_time: *time,
                     exit,
                 })
             }
