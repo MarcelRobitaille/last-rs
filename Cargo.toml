@@ -1,6 +1,6 @@
 [package]
 name = "last-rs"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 license = "MIT"
 description = "A Rust reimplementation of the util-linux last command."
@@ -12,9 +12,9 @@ readme = "README.md"
 
 [dependencies]
 time = { version = "0.3.14", features = ["formatting", "macros", "local-offset"] }
-utmp-rs = "0.3.0"
+utmp-rs = "0.4.0"
 thiserror = "1.0.24"
-clap = "2.33.3"
+clap = { version = "4.5.40", features = ["derive"] }
 
 # [features]
 # binary-dependencies = ["clap"]

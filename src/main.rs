@@ -1,6 +1,5 @@
-use clap::{App, Arg};
+use clap::Parser;
 use last_rs::{get_logins, Enter, Exit, LastError};
-use std::env;
 use std::path::Path;
 use thiserror::Error;
 use time::error::Format as TimeFormatError;
@@ -108,49 +107,34 @@ fn print(file: &str, number: Option<usize>) -> Result<(), PrintError> {
     Ok(())
 }
 
+#[derive(Parser, Debug)]
+#[command(
+    author = "Marcel Robitaille",
+    version,
+    about = "A Rust reimplementation of the util-linux last command."
+)]
+struct Arguments {
+    #[arg(short, long, num_args = 1.., help=
+        "Tell last to use a specific file instead of /var/log/wtmp.
+        The --file option can be given multiple times,
+        and all of the specified files will be processed.")]
+    file: Vec<String>,
+
+    #[arg(short, long = "limit", help = "Tell last how many lines to show.")]
+    number: Option<usize>,
+}
+
 fn cli() -> Result<(), CliError> {
-    let matches = App::new("last")
-        .arg(
-            Arg::with_name("file")
-                .short("f")
-                .long("file")
-                .help(
-                    "Tell last to use a specific file instead of /var/log/wtmp. \
-                    The --file option can be given multiple times, \
-                    and all of the specified files will be processed.",
-                )
-                .multiple(true)
-                .number_of_values(1)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("number")
-                .short("n")
-                .long("limit")
-                .help("Tell last how many lines to show.")
-                .takes_value(true),
-        )
-        .get_matches();
+    let args = Arguments::parse();
 
-    let files: Vec<_> = matches
-        .values_of("file")
-        .map_or_else(|| vec!["/var/log/wtmp"], Iterator::collect);
-
-    let number = match matches.value_of("number") {
-        Some(number) => Some(number.parse().map_err(|_e| {
-            CliError::Argument {
-                option: env::args()
-                    .nth(matches.index_of("number").unwrap() - 1)
-                    .unwrap(),
-                expected: "int".to_string(),
-                found: number.to_string(),
-            }
-        })?),
-        None => None,
+    let files = if args.file.is_empty() {
+        vec!["/var/log/wtmp".to_string()]
+    } else {
+        args.file
     };
 
     for file in files {
-        print(file, number)?;
+        print(&file, args.number)?;
     }
 
     Ok(())
